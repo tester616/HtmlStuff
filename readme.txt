@@ -1,0 +1,1 @@
+Some small projects I did as a part of personal training.

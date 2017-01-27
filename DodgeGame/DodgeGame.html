@@ -1,0 +1,1823 @@
+<!DOCTYPE html>
+<html>
+
+<style>
+#largeMid {
+width: 900px;
+margin: 0 auto;
+}
+</style>
+
+<body>
+
+<div id="largeMid"><canvas id="canvas" width="900" height="900" style="background-color:#eeeeee;"></canvas></div>
+<div id="largeMid"><p id="powerupInformation"></p></div>
+
+<script>
+var canvas = document.getElementById("canvas");
+var ctx = canvas.getContext("2d");
+var canvasMode = 2;
+
+//---------------------------------------------------------------------------------------------------------
+//START OF RANDOM DRAWING VARIABLES
+var drawIntervalId1;
+var drawIntervalId2;
+var drawIntervalId3;
+var drawIntervalId4;
+var changeBackgroundColorIntervalId;
+var xTo;
+var yTo;
+var color;
+var xFrom;
+var xFrom;
+var playerX = 450;
+var playerY = 450;
+var backgroundColor = "#eeeeee";
+//END OF RANDOM DRAWING VARIABLES
+//---------------------------------------------------------------------------------------------------------
+
+//---------------------------------------------------------------------------------------------------------
+//START OF DODGE GAME VARIABLES
+var gameClockIntervalId;
+var gameFrameIntervalId;
+var gameDifficultyIncreaseIntervalId;
+var gameDifficultyOverTimeIncreaseIntervalId;
+var sendPowerupIntervalId;
+var player = {
+	id: 0,
+	xLocation: 450,
+	yLocation: 450,
+	xSpeed: 5,
+	ySpeed: 5,
+	realXSpeed: 5,
+	realYSpeed: 5,
+	xAcceleration: -450,
+	yAcceleration: -450,
+	health: 21,
+	shield: 5,
+	size: 6,
+	vulnerable: true,
+	powerupInvulnerability: 3,
+	powerupSize: 2,
+	powerupSpeed: 2,
+	powerupMagnetism: 2,
+	powerupShock: 5,
+	powerupInvulnerabilityStatus: false,
+	powerupSizeStatus: false,
+	powerupSpeedStatus: false,
+	powerupMagnetismStatus: false,
+	powerupShockStatus: false,
+	powerupInvulnerabilityTimeout: "undefined",
+	powerupSpeedTimeout: "undefined",
+	powerupMagnetismTimeout: "undefined",
+	powerupShockTimeout: "undefined",
+	powerupSizeTimeoutout: "undefined",
+	sizeMultiplier: 1,
+	enemySizeMultiplier: 1,
+	enemySpeedMultiplier: 1,
+	realSize: 6,
+	realSizeWithShield: 6,
+	powerupSizeStack: 0,
+	powerupSpeedStack: 0,
+	speedMultiplier: 1,
+	shieldChargeStatus: false,
+	shieldChargeIntervalId: "undefined",
+	shieldChargeIntervalTime: 3000,
+	shieldRangeMultiplier: 0.5,
+	shieldOpacity: 0.25
+};
+var enemyList = [];
+var powerupList = [];
+var shockList = [];
+var textList = [];
+var gameStatus = false;
+var dateObject = new Date();
+var gameClock = 0;
+var lastFrameGameClock = 0;
+var currentFrameIntervalLength = 0;
+var mousePos = {
+	x: 450,
+	y: 450
+};
+var initialEnemies = 15;
+var enemyIncreaseAmount = 1;
+var enemyOverTimeIncreaseTime = 80000;
+var enemyOverTimeIncreaseAmount = 1;
+var powerupInvulnerabilityTime = 2000;
+var powerupSizeTime = 20000;
+var powerupSpeedTime = 20000;
+var powerupMagnetismTime = 10000;
+var powerupShockTime = 2500;
+var shockSizeMultiplier = 20;
+var shockExplosionDuration = 500;
+var shockDamage = 12;
+var magnetismSizeMultiplier = 30;
+var magnetismForce = 100;
+var magnetismOpacity = 0.3;
+var hitInvulnerabilityTime = 4000;
+var enemyActivationTime = 3000;
+var enemyImpactDamage = 10;
+var playerImpactDamage = 7;
+var isGameOver = false;
+var accelerationMultiplier = 15;
+var frameInterval = 5;
+var enemyInterval = 10000;
+var powerupInterval = 5000;
+var powerupIncreaseAmount = 1;
+var roundStartTimeMs = 0;
+var roundTotalTime = {
+	minutes: 0,
+	seconds: 0
+};
+var powerupActivationTime = 3000;
+var textXAcceleration = 0;
+var textYAcceleration = -2;
+var textXSpeed = 0;
+var textYSpeed = -25;
+var textTime = 3000;
+var textXLocation = -5;
+var textYLocation = -25;
+var shieldDamageMitigationAmount = 0.75;
+var shieldDamageDurabilityPerPoint = 3;
+var pause = false;
+var testShockTimer = "undefined";
+var id = 1;
+//END OF DODGE GAME VARIABLES
+//---------------------------------------------------------------------------------------------------------
+
+//---------------------------------------------------------------------------------------------------------
+//START OF SUPPORT FUNCTIONS
+function getRadians(degrees) {
+	return radians = degrees*Math.PI/180;
+}
+
+function getRandom(min, max) {
+	return Math.floor(Math.random()*(max+1-min))+min;
+}
+
+function getRandomColor() {
+    var letters = '0123456789ABCDEF'.split('');
+    var color = '#';
+    for (var i = 0; i < 6; i++ ) {
+        color += letters[Math.floor(Math.random() * 16)];
+    }
+    return color;
+}
+
+function decToHex(dec) {
+	return (dec).toString(16);
+}
+
+function hexToDec(hex) {
+	return parseInt(hex, 16);
+}
+
+function clearCanvas() {
+	ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+function playAudio(name) {
+	var audio = new Audio(name);
+	audio.play();
+}
+
+function objToString (obj) {
+    var str = '';
+    for (var p in obj) {
+        if (obj.hasOwnProperty(p)) {
+            str += p + '::' + obj[p] + '\n';
+        }
+    }
+    return str;
+}
+
+function Timer(callback, delay) {
+    var timerId, start, remaining = delay, initialDelay = delay;
+
+    this.pause = function() {
+        window.clearTimeout(timerId);
+        remaining -= new Date() - start;
+    };
+
+    this.resume = function() {
+		if(remaining > 0) {
+		    start = new Date();
+			window.clearTimeout(timerId);
+			timerId = window.setTimeout(callback, remaining);
+		}
+    };
+
+    this.getRemaining = function() {
+        remaining = initialDelay-(new Date() - start);
+		return remaining;
+    };
+
+    this.getInitialDelay = function() {
+		return initialDelay;
+    };
+
+    this.stopTimeout = function() {
+		window.clearTimeout(timerId);
+    };
+
+    this.resume();
+}
+
+window.onkeydown = function (e) {
+    var code = e.keyCode ? e.keyCode : e.which;
+	if(canvasMode == 1) { //random drawing
+	    if (code === 87) { //w
+			playerY = playerY - 4;
+        } else if (code === 65) { //a
+            playerX = playerX - 4;
+        } else if (code === 83) { //s
+            playerY = playerY + 4;
+        } else if (code === 68) { //d
+            playerX = playerX + 4;
+        }
+        drawPlayerLine();
+	}
+	else if(canvasMode == 2) { //dodge game
+		var x;
+		if(isGameOver == false) {
+			if (code === 65 && player.powerupSize > 0 && pause == false) { //a, size
+				player.powerupSizeStatus = true;
+				player.powerupSizeStack++;
+				//player.powerupSizeTimeout = setTimeout(endSizePowerup, powerupSizeTime, player.id);
+				player.powerupSizeTimeout = new Timer(
+					function() {
+						endSizePowerup(player.id);
+					},
+					powerupSizeTime
+				);
+				player.powerupSize--;
+				playAudio("sizeChange.mp3");
+			} else if (code === 83 && player.powerupSpeed > 0 && pause == false) { //s, speed
+				player.powerupSpeedStatus = true;
+				player.powerupSpeedStack++;
+				//player.powerupSpeedTimeout = setTimeout(endSpeedPowerup, powerupSpeedTime, player.id);
+				player.powerupSpeedTimeout = new Timer(
+					function() {
+						endSpeedPowerup(player.id);
+					},
+					powerupSpeedTime
+				);
+				player.powerupSpeed--;
+				playAudio("slowDown.mp3");
+			} else if (code === 68 && player.powerupMagnetism > 0 && pause == false) { //d, magnetism
+				if(player.powerupMagnetismStatus) {
+					//clearTimeout(player.powerupMagnetismTimeout);
+				}
+				player.powerupMagnetismStatus = true;
+				//player.powerupMagnetismTimeout = setTimeout(endMagnetismPowerup, powerupMagnetismTime, player.id);
+				player.powerupMagnetismTimeout = new Timer(
+					function() {
+						endMagnetismPowerup(player.id);
+					},
+					powerupMagnetismTime
+				);
+				player.powerupMagnetism--;
+				playAudio("magnetismEffect.mp3");
+			} else if (code === 90 && player.powerupShock > 0 && pause == false) { //z, shock
+				if(player.powerupShockStatus == false) {
+					player.powerupShockStatus = true;
+					//player.powerupShockTimeout = setTimeout(endShockPowerup, powerupShockTime, player.id);
+					player.powerupShockTimeout = new Timer(
+						function() {
+							endShockPowerup(player.id);
+						},
+						powerupShockTime
+					);
+					player.powerupShock--;
+					playAudio("shockCharge.mp3");
+				}
+
+			} else if (code === 88 && player.powerupInvulnerability > 0 && pause == false) { //x, invulnerability
+				if(player.powerupInvulnerabilityStatus) {
+					//clearTimeout(player.powerupInvulnerabilityTimeout);
+					player.powerupInvulnerabilityTimeout.stopTimeout();
+				}
+				player.powerupInvulnerabilityStatus = true;
+				//player.powerupInvulnerabilityTimeout = setTimeout(endInvulnerabilityPowerup, powerupInvulnerabilityTime, player.id);
+				player.powerupInvulnerabilityTimeout = new Timer(
+					function() {
+						endInvulnerabilityPowerup(player.id);
+					},
+					powerupInvulnerabilityTime
+				);
+				player.powerupInvulnerability--;
+				playAudio("invulnerabilityEffect.mp3");
+			} else if (code === 17 && pause == false) { //ctrl, shield charge
+				player.shieldChargeStatus = !player.shieldChargeStatus;
+				if(player.shieldChargeStatus) {
+					startChargingPlayerShield();
+				}
+				else if(player.shieldChargeStatus == false) {
+					stopChargingPlayerShield();
+				}
+			} else if (code === 32 && pause == false) { //space, remove player speed
+				player.xSpeed = 0;
+				player.ySpeed = 0;
+			} else if (code === 84) { //t, pause
+				togglePause();
+			}
+		}
+	}
+};
+//END OF SUPPORT FUNCTIONS
+//---------------------------------------------------------------------------------------------------------
+
+
+//---------------------------------------------------------------------------------------------------------
+//START OF RANDOM DRAWING
+//preparePath(ctx, getRandom(-349, 349), getRandom(-349, 349));
+/*
+prepareFirstDrawing();
+setInterval(changeBackgroundColor, 1);
+setInterval(draw, getRandom(5000, 30000));
+setInterval(draw, getRandom(2000, 6000));
+setInterval(draw, getRandom(1150, 3500));
+setInterval(draw, getRandom(150, 2000));
+*/
+//drawWithLoop();
+
+function startRandomDrawing() {
+	drawIntervalId1 = setInterval(draw, getRandom(5000, 30000));
+	drawIntervalId2 = setInterval(draw, getRandom(2000, 6000));
+	drawIntervalId3 = setInterval(draw, getRandom(1150, 3500));
+	drawIntervalId4 = setInterval(draw, getRandom(150, 2000));
+	changeBackgroundColorIntervalId = setInterval(changeBackgroundColor, 1);
+}
+
+function stopRandomDrawing() {
+	clearInterval(drawIntervalId1);
+	clearInterval(drawIntervalId2);
+	clearInterval(drawIntervalId3);
+	clearInterval(drawIntervalId4);
+	clearInterval(changeBackgroundColorIntervalId);
+}
+
+function prepareFirstDrawing() {
+	xFrom = getRandom(-50, 950);
+	yFrom = getRandom(-50, 950);
+}
+
+function drawWithLoop() {
+	for(i = 0; i < 100; i++) {
+		draw();
+	}
+}
+
+function changeBackgroundColor() {
+	var newRed = decToHex(hexToDec(backgroundColor.substring(1, 3))+getRandom(-1, 1));
+	if((hexToDec(backgroundColor.substring(1, 3)) < 1)
+		|| (hexToDec(backgroundColor.substring(1, 3)) > 254)) {
+		newRed = "ee";
+		//newGreen = "ee";
+		//newBlue = "ee";
+	}
+	var newGreen = decToHex(hexToDec(backgroundColor.substring(3, 5))+getRandom(-1, 1));
+	if((hexToDec(backgroundColor.substring(3, 5)) < 1)
+		|| (hexToDec(backgroundColor.substring(3, 5)) > 254)) {
+		newGreen = "ee";
+		//newRed = "ee";
+		//newBlue = "ee";
+	}
+	var newBlue = decToHex(hexToDec(backgroundColor.substring(5, 7))+getRandom(-1, 1));
+	if((hexToDec(backgroundColor.substring(5, 7)) < 1)
+		|| (hexToDec(backgroundColor.substring(5, 7)) > 254)) {
+		newBlue = "ee";
+		//newRed = "ee";
+		//newGreen = "ee";
+	}
+	var color = "#"+newRed+newGreen+newBlue;
+	document.getElementById("canvas").style.backgroundColor = color;
+	backgroundColor = color;
+}
+
+function draw() {
+	xTo = getRandom(-50, 950);
+	yTo = getRandom(-50, 950);
+	color = getRandomColor();
+	drawStroke(getRandom(0, 1), getRandom(1, 10));
+	xFrom = xTo;
+	yFrom = yTo;
+}
+
+function preparePath(ctx, x, y) {
+    ctx.beginPath();
+    ctx.lineWidth = 10;
+    ctx.lineCap = "round";
+    ctx.moveTo(x, y);
+}
+
+function drawStroke(style, boom) {
+    ctx.beginPath();
+    ctx.lineWidth = 3;
+    ctx.lineCap = "round";
+    ctx.moveTo(xFrom, yFrom);
+    ctx.strokeStyle=color;
+    if(style == 0) {
+		ctx.lineTo(xTo, yTo);
+		ctx.stroke();
+		ctx.closePath();
+    }
+    if(style == 1) {
+		ctx.quadraticCurveTo(getRandom(-200, 700), getRandom(-200, 700), xTo, yTo);
+		//ctx.quadraticCurveTo(710, 710, xTo, yTo);
+		ctx.stroke();
+		ctx.closePath();
+    }
+    if(boom == 1) {
+		ctx.beginPath();
+		ctx.arc(xTo, yTo, getRandom(5, 15), 0, Math.PI * 2);
+		ctx.stroke();
+		ctx.closePath();
+		ctx.beginPath();
+		ctx.arc(xTo, yTo, getRandom(20, 40), 0, Math.PI * 2);
+		ctx.stroke();
+		ctx.closePath();
+		ctx.beginPath();
+		ctx.arc(xTo, yTo, getRandom(45, 75), 0, Math.PI * 2);
+		ctx.stroke();
+		ctx.closePath();
+		
+		var rollComparison = 2;
+		while(getRandom(0, 11) > rollComparison) {
+			ctx.beginPath();
+			ctx.arc(xTo+getRandom(-80, 80), yTo+getRandom(-80, 80), getRandom(5, 35), 0, Math.PI * 2);
+			ctx.stroke();
+			ctx.closePath();
+			rollComparison++;
+		}
+    }
+}
+
+function drawPlayerLine() {
+    ctx.beginPath();
+    ctx.fillStyle = "#EEEEEE";
+    ctx.arc(playerX, playerY, 4, 0, 2*Math.PI);
+    ctx.fill();
+    ctx.closePath();
+}
+//END OF RANDOM DRAWING SECTION
+//---------------------------------------------------------------------------------------------------------
+
+//---------------------------------------------------------------------------------------------------------
+//START OF DODGE GAME SECTION
+
+startGame();
+
+function startGame() {
+	startMousePositionListener();
+	setInitialGameClockValues();
+	createInitialEnemies(initialEnemies);
+	startFrames();
+	startDifficultyIncrease();
+	startDifficultyOverTimeIncrease();
+	startPowerupSending();
+}
+
+function togglePause() {
+	if(pause) {
+		syncLastFrameGameClock();
+		startFrames();
+		resumeTimers();	
+		if(player.shieldChargeStatus) {
+			startChargingPlayerShield();
+		}
+		startDifficultyIncrease();
+		startDifficultyOverTimeIncrease();
+		startPowerupSending();
+		pause = !pause;
+	}
+	else if(pause == false) {
+		stopFrames();
+		pauseTimers();
+		if(player.shieldChargeStatus) {
+			stopChargingPlayerShield();
+		}
+		stopDifficultyIncrease();
+		stopDifficultyOverTimeIncrease();
+		stopPowerupSending();
+		pause = !pause;
+	}
+}
+
+function pauseTimers() {
+	if(typeof(player.testShockTimer) !== "undefined") {
+		player.testShockTimer.pause();
+	}
+	/*powerupInvulnerabilityTimeout: "undefined";
+	powerupSpeedTimeout: "undefined";
+	powerupMagnetismTimeout: "undefined";
+	powerupShockTimeout: "undefined";
+	powerupSizeTimeoutout: "undefined";*/
+}
+
+function resumeTimers() {
+	if(typeof(player.testShockTimer) !== "undefined") {
+		player.testShockTimer.resume();
+	}
+}
+
+function startMousePositionListener() {
+	canvas.addEventListener(
+		'mousemove',
+		function(evt) {
+			mousePos = getMousePos(canvas, evt);
+		},
+		false);
+}
+
+function getMousePos(canvas, evt) {
+    var rect = canvas.getBoundingClientRect();
+    return {
+        x: Math.round((evt.clientX-rect.left)/(rect.right-rect.left)*canvas.width),
+		y: Math.round((evt.clientY-rect.top)/(rect.bottom-rect.top)*canvas.height)
+    };
+}
+
+function setInitialGameClockValues() {
+    gameClock = (new Date()).getTime();
+	lastFrameGameClock = gameClock;
+	roundStartTimeMs = gameClock;
+}
+
+function createInitialEnemies(amount) {
+	increaseDifficulty(amount);
+}
+
+function startFrames() {
+	gameFrameIntervalId = setInterval(executeNextFrame, frameInterval);
+}
+
+function startDifficultyIncrease() {
+	gameDifficultyIncreaseIntervalId = setInterval(increaseDifficulty, enemyInterval, enemyIncreaseAmount);
+}
+
+function startDifficultyOverTimeIncrease() {
+	gameDifficultyOverTimeIncreaseIntervalId = setInterval(increaseDifficultyOverTime, enemyOverTimeIncreaseTime);
+}
+
+function increaseDifficultyOverTime() {
+	for(var i = 0; i < enemyOverTimeIncreaseAmount; i++) {
+		startDifficultyIncrease();
+	}
+}
+
+function startPowerupSending() {
+	sendPowerupIntervalId = setInterval(sendPowerup, powerupInterval, powerupIncreaseAmount);
+}
+
+function startChargingPlayerShield() {
+	player.shieldChargeIntervalId = setInterval(chargePlayerShield, player.shieldChargeIntervalTime);
+}
+
+function stopChargingPlayerShield() {
+	clearInterval(player.shieldChargeIntervalId);
+}
+
+function stopGameClock() {
+	clearInterval(gameClockIntervalId);
+}
+
+function stopFrames() {
+	clearInterval(gameFrameIntervalId);
+}
+
+function stopDifficultyIncrease() {
+	clearInterval(gameDifficultyIncreaseIntervalId);
+}
+
+function stopDifficultyOverTimeIncrease() {
+	clearInterval(gameDifficultyOverTimeIncreaseIntervalId);
+}
+
+function stopPowerupSending() {
+	clearInterval(sendPowerupIntervalId);
+}
+
+function executeNextFrame() {
+	clearCanvas();
+	updateTimeIntervalDataAndGameTotalTime();
+	updateMultipliersAndRealSizes();
+	updateAccelerations();
+	updateSpeeds();
+	updateTextOpacitys();
+	moveObjects();
+	executeAI();
+	createPath();
+	updatePowerupInformation();
+	checkForGameOver();
+}
+
+function updateTimeIntervalDataAndGameTotalTime() {
+    gameClock = (new Date()).getTime();
+	currentFrameIntervalLength = gameClock-lastFrameGameClock;
+	lastFrameGameClock = gameClock;
+	roundTotalTimeMs = gameClock-roundStartTimeMs;
+	roundTotalTime = convertToMinutesAndSeconds(roundTotalTimeMs);
+}
+
+function syncLastFrameGameClock() {
+	gameClock = ((new Date()).getTime())-frameInterval;
+	lastFrameGameClock = gameClock;
+}
+
+function updateMultipliersAndRealSizes() {
+	if(player.powerupSizeStatus) {
+		player.sizeMultiplier = Math.pow(0.5, player.powerupSizeStack);
+		player.enemySizeMultiplier = Math.pow(0.5, player.powerupSizeStack);
+	}
+	else {
+		player.sizeMultiplier = 1;
+		player.enemySizeMultiplier = 1;
+	}
+	if(player.powerupSpeedStatus) {
+		player.enemySpeedMultiplier = Math.pow(0.5, player.powerupSpeedStack);
+	}
+	else {
+		player.enemySpeedMultiplier = 1;
+	}
+	if(player.shieldChargeStatus) {
+		player.speedMultiplier = 0.2;
+		
+	}
+	else {
+		player.speedMultiplier = 1;
+		
+	}
+	player.realSize = Math.round(player.size*player.sizeMultiplier);
+	player.realSizeWithShield = player.realSize+player.shield;
+	for(var i = 0; i < enemyList.length; i++) {
+		if(enemyList[i].powerupSizeStatus) {
+			enemyList[i].sizeMultiplier = 2;
+		}
+		else {
+			enemyList[i].sizeMultiplier = 1;
+		}
+		if(enemyList[i].powerupSpeedStatus) {
+			enemyList[i].speedMultiplier = 2;
+		}
+		else {
+			enemyList[i].speedMultiplier = 1;
+		}
+		enemyList[i].realSize = Math.round(enemyList[i].size*enemyList[i].sizeMultiplier*player.enemySizeMultiplier);
+		enemyList[i].realXSpeed = enemyList[i].xSpeed*enemyList[i].speedMultiplier*player.enemySpeedMultiplier;
+		enemyList[i].realYSpeed = enemyList[i].ySpeed*enemyList[i].speedMultiplier*player.enemySpeedMultiplier;
+	}
+}
+
+function updateAccelerations() {
+	updatePlayerMouseAcceleration();
+	updatePlayerAndEnemiesMagnetismAccelerations();
+}
+
+function updatePlayerMouseAcceleration() {
+	var mX = mousePos.x;
+	var mY = mousePos.y;
+	player.xAcceleration = mX-(player.xLocation);
+	player.yAcceleration = mY-(player.yLocation);
+}
+
+function updatePlayerAndEnemiesMagnetismAccelerations() {
+	var unitsRelationData;
+	var divisionValue;
+	var magTotalXYDifference;
+	var magXAccelerationShare;
+	var magYAccelerationShare;
+	var magXAcceleration;
+	var magYAcceleration;
+	var magInsideDistance;
+	var magDistanceMultiplier;
+	var enemyMagSize;
+	var playerMagSize = (player.realSize+(player.shield*player.shieldRangeMultiplier))*magnetismSizeMultiplier;
+	for(var i = 0; i < enemyList.length; i++) {
+		enemyList[i].xAcceleration = 0;
+		enemyList[i].yAcceleration = 0;
+		if(player.powerupMagnetismStatus || enemyList[i].powerupMagnetismStatus) {
+			unitsRelationData = getUnitsRelationData(
+				enemyList[i].xLocation,
+				enemyList[i].yLocation,
+				enemyList[i].realSize,
+				player.xLocation,
+				player.yLocation,
+				player.realSize
+			);
+		}
+		if(player.powerupMagnetismStatus) {
+			if(unitsRelationData.xLocationDifference == 0 || unitsRelationData.yLocationDifference == 0) {
+				if(unitsRelationData.xLocationDifference == 0 && unitsRelationData.yLocationDifference != 0) {
+					magXAccelerationShare = 0;
+					magYAccelerationShare = 1;
+					if(unitsRelationData.yLocationDifference < 0) {
+						magYAccelerationShare = magYAccelerationShare*(-1);
+					}
+				}
+				else if(unitsRelationData.xLocationDifference != 0 && unitsRelationData.yLocationDifference == 0) {
+					magXAccelerationShare = 1;
+					if(unitsRelationData.xLocationDifference < 0) {
+						magXAccelerationShare = magXAccelerationShare*(-1);
+					}
+					magYAccelerationShare = 0;
+				}
+				else if(unitsRelationData.xLocationDifference == 0 && unitsRelationData.yLocationDifference == 0) {
+					magXAccelerationShare = 0;
+					magYAccelerationShare = 0;
+				}
+			}
+			else {
+				magTotalXYDifference = Math.abs(unitsRelationData.xLocationDifference)+Math.abs(unitsRelationData.yLocationDifference);
+				magXAccelerationShare = unitsRelationData.xLocationDifference/magTotalXYDifference;
+				magYAccelerationShare = unitsRelationData.yLocationDifference/magTotalXYDifference;
+			}
+			magInsideDistance = playerMagSize-(unitsRelationData.emptySpaceDistance+player.realSize)
+			if(magInsideDistance < 0) {
+				magInsideDistance = 0;
+			}
+			magDistanceMultiplier = magInsideDistance/playerMagSize;
+			magXAcceleration = magXAccelerationShare*magnetismForce*magDistanceMultiplier;
+			magYAcceleration = magYAccelerationShare*magnetismForce*magDistanceMultiplier;
+			enemyList[i].xAcceleration = enemyList[i].xAcceleration+magXAcceleration;
+			enemyList[i].yAcceleration = enemyList[i].yAcceleration+magYAcceleration;
+		}
+		if(enemyList[i].powerupMagnetismStatus) {
+			if(unitsRelationData.xLocationDifference == 0 || unitsRelationData.yLocationDifference == 0) {
+				if(unitsRelationData.xLocationDifference == 0 && unitsRelationData.yLocationDifference != 0) {
+					magXAccelerationShare = 0;
+					magYAccelerationShare = 1;
+					if(unitsRelationData.yLocationDifference < 0) {
+						magYAccelerationShare = magYAccelerationShare*(-1);
+					}
+				}
+				else if(unitsRelationData.xLocationDifference != 0 && unitsRelationData.yLocationDifference == 0) {
+					magXAccelerationShare = 1;
+					if(unitsRelationData.xLocationDifference < 0) {
+						magXAccelerationShare = magXAccelerationShare*(-1);
+					}
+					magYAccelerationShare = 0;
+				}
+				else if(unitsRelationData.xLocationDifference == 0 && unitsRelationData.yLocationDifference == 0) {
+					magXAccelerationShare = 0;
+					magYAccelerationShare = 0;
+				}
+			}
+			else {
+				magTotalXYDifference = Math.abs(unitsRelationData.xLocationDifference)+Math.abs(unitsRelationData.yLocationDifference);
+				magXAccelerationShare = unitsRelationData.xLocationDifference/magTotalXYDifference;
+				magYAccelerationShare = unitsRelationData.yLocationDifference/magTotalXYDifference;
+			}
+			magInsideDistance = playerMagSize-(unitsRelationData.emptySpaceDistance+player.realSize)
+			if(magInsideDistance < 0) {
+				magInsideDistance = 0;
+			}
+			magDistanceMultiplier = magInsideDistance/playerMagSize;
+			magXAcceleration = magXAccelerationShare*magnetismForce*magDistanceMultiplier;
+			magYAcceleration = magYAccelerationShare*magnetismForce*magDistanceMultiplier;
+			player.xAcceleration = player.xAcceleration+magXAcceleration;
+			player.yAcceleration = player.yAcceleration+magYAcceleration;
+		}
+	}
+}
+
+function updateSpeeds() {
+	updatePlayerSpeedAndRealSpeed();
+	updateEnemySpeedsAndRealSpeeds();
+	updateTextSpeeds();
+}
+
+function updatePlayerSpeedAndRealSpeed() {
+	player.xSpeed = player.xSpeed+(player.xAcceleration*(currentFrameIntervalLength/1000)*accelerationMultiplier);
+	player.ySpeed = player.ySpeed+(player.yAcceleration*(currentFrameIntervalLength/1000)*accelerationMultiplier);
+	player.realXSpeed = player.xSpeed*player.speedMultiplier;
+	player.realYSpeed = player.ySpeed*player.speedMultiplier;
+}
+
+function updateEnemySpeedsAndRealSpeeds() {
+	for(var i = 0; i < enemyList.length; i++) {
+		enemyList[i].xSpeed = enemyList[i].xSpeed+(enemyList[i].xAcceleration*(currentFrameIntervalLength/1000)*accelerationMultiplier);
+		enemyList[i].ySpeed = enemyList[i].ySpeed+(enemyList[i].yAcceleration*(currentFrameIntervalLength/1000)*accelerationMultiplier);
+		enemyList[i].realXSpeed = enemyList[i].xSpeed*enemyList[i].speedMultiplier*player.enemySpeedMultiplier;
+		enemyList[i].realYSpeed = enemyList[i].ySpeed*enemyList[i].speedMultiplier*player.enemySpeedMultiplier;
+	}
+}
+
+function updateTextSpeeds() {
+	for(var i = 0; i < textList.length; i++) {
+		textList[i].xSpeed = textList[i].xSpeed+(textList[i].xAcceleration*(currentFrameIntervalLength/1000)*accelerationMultiplier);
+		textList[i].ySpeed = textList[i].ySpeed+(textList[i].yAcceleration*(currentFrameIntervalLength/1000)*accelerationMultiplier);
+	}
+}
+
+function updateTextOpacitys() {
+	for(var i = 0; i < textList.length; i++) {
+		
+	}
+}
+
+function moveObjects() {
+	movePlayer();
+	moveEnemiesAndCheckForCollision();
+	movePowerupsAndCheckForCollision();
+	moveShocksAndCheckForCollision();
+	moveTexts();
+}
+
+function movePlayer() {
+	var borderCollisionData;
+	player.xLocation = player.xLocation+(player.realXSpeed*(currentFrameIntervalLength/1000));
+	player.yLocation = player.yLocation+(player.realYSpeed*(currentFrameIntervalLength/1000));
+	borderCollisionData = getBorderCollisionData(player.xLocation, player.yLocation, player.size);
+	if(borderCollisionData.reverseXSpeed) {
+		player.xSpeed = player.xSpeed*(-1);
+	}
+	if(borderCollisionData.reverseYSpeed) {
+		player.ySpeed = player.ySpeed*(-1);
+	}
+	if(typeof(borderCollisionData.newXLocation) !== "undefined") {
+		player.xLocation = borderCollisionData.newXLocation;
+	}
+	if(typeof(borderCollisionData.newYLocation) !== "undefined") {
+		player.yLocation = borderCollisionData.newYLocation;
+	}
+}
+
+function moveEnemiesAndCheckForCollision() {
+	var borderCollisionData;
+	var unitsRelationData;
+	for(var i = 0; i < enemyList.length; i++) {
+		if(enemyList[i].alive) {
+			if(enemyList[i].active == false) {
+				setTimeout(activateEnemy, enemyActivationTime, i);
+			}
+			enemyList[i].xLocation = enemyList[i].xLocation+(enemyList[i].realXSpeed*(currentFrameIntervalLength/1000));
+			enemyList[i].yLocation = enemyList[i].yLocation+(enemyList[i].realYSpeed*(currentFrameIntervalLength/1000));
+			borderCollisionData = getBorderCollisionData(
+				enemyList[i].xLocation,
+				enemyList[i].yLocation,
+				enemyList[i].realSize
+			);
+			if(borderCollisionData.reverseXSpeed) {
+				enemyList[i].xSpeed = enemyList[i].xSpeed*(-1);
+			}
+			if(borderCollisionData.reverseYSpeed) {
+				enemyList[i].ySpeed = enemyList[i].ySpeed*(-1);
+			}
+			if(typeof(borderCollisionData.newXLocation) !== "undefined") {
+				enemyList[i].xLocation = borderCollisionData.newXLocation;
+			}
+			if(typeof(borderCollisionData.newYLocation) !== "undefined") {
+				enemyList[i].yLocation = borderCollisionData.newYLocation;
+			}
+			unitsRelationData = getUnitsRelationData(
+				enemyList[i].xLocation,
+				enemyList[i].yLocation,
+				enemyList[i].realSize,
+				player.xLocation,
+				player.yLocation,
+				player.realSizeWithShield
+			);
+			if(unitsRelationData.collision && player.vulnerable 
+				&& player.powerupInvulnerabilityStatus == false && enemyList[i].active) {
+				hitPlayer(enemyImpactDamage);
+			}
+			else if(unitsRelationData.collision && player.powerupInvulnerabilityStatus
+			&& enemyList[i].powerupInvulnerabilityStatus == false && enemyList[i].active) {
+				hitEnemy(playerImpactDamage, i);
+			}
+		}
+	}
+}
+
+function movePowerupsAndCheckForCollision() {
+	var borderCollisionData;
+	var unitsRelationData;
+	var powerupsToDeleteList = [];
+	for(var i = 0; i < powerupList.length; i++) {
+		if(powerupList[i].active) {
+			powerupList[i].xLocation = powerupList[i].xLocation+(powerupList[i].xSpeed*(currentFrameIntervalLength/1000));
+			powerupList[i].yLocation = powerupList[i].yLocation+(powerupList[i].ySpeed*(currentFrameIntervalLength/1000));
+			borderCollisionData = getBorderCollisionData(
+				powerupList[i].xLocation,
+				powerupList[i].yLocation,
+				powerupList[i].size
+			);
+			if(borderCollisionData.reverseXSpeed) {
+				powerupList[i].xSpeed = powerupList[i].xSpeed*(-1);
+			}
+			if(borderCollisionData.reverseYSpeed) {
+				powerupList[i].ySpeed = powerupList[i].ySpeed*(-1);
+			}
+			if(typeof(borderCollisionData.newXLocation) !== "undefined") {
+				powerupList[i].xLocation = borderCollisionData.newXLocation;
+			}
+			if(typeof(borderCollisionData.newYLocation) !== "undefined") {
+				powerupList[i].yLocation = borderCollisionData.newYLocation;
+			}
+			for(var j = 0; j < enemyList.length; j++) {
+				unitsRelationData = getUnitsRelationData(
+					powerupList[i].xLocation,
+					powerupList[i].yLocation,
+					powerupList[i].size,
+					enemyList[j].xLocation,
+					enemyList[j].yLocation,
+					enemyList[j].size
+				);
+				if(unitsRelationData.collision) {
+					if(powerupList[i].type == 1 && enemyList[j].powerupInvulnerability == 0 && enemyList[j].powerupInvulnerabilityStatus == false) {
+						enemyList[j].powerupInvulnerability = enemyList[j].powerupInvulnerability+1;
+					}
+					else if(powerupList[i].type == 2 && enemyList[j].powerupSize == 0 && enemyList[j].powerupSizeStatus == false) {
+						enemyList[j].powerupSize = enemyList[j].powerupSize+1;
+					}
+					else if(powerupList[i].type == 3 && enemyList[j].powerupSpeed == 0 && enemyList[j].powerupSpeedStatus == false) {
+						enemyList[j].powerupSpeed = enemyList[j].powerupSpeed+1;
+					}
+					else if(powerupList[i].type == 4 && enemyList[j].powerupMagnetism == 0 && enemyList[j].powerupMagnetismStatus == false) {
+						enemyList[j].powerupMagnetism = enemyList[j].powerupMagnetism+1;
+					}
+					else if(powerupList[i].type == 5 && enemyList[j].powerupShock == 0 && enemyList[j].powerupShockStatus == false) {
+						enemyList[j].powerupShock = enemyList[j].powerupShock+1;
+					}
+				}
+			}
+			unitsRelationData = getUnitsRelationData(
+				powerupList[i].xLocation,
+				powerupList[i].yLocation,
+				powerupList[i].size,
+				player.xLocation,
+				player.yLocation,
+				player.size
+			);
+			if(unitsRelationData.collision) {
+				var text = "";
+				if(powerupList[i].type == 1) {
+					player.powerupInvulnerability = player.powerupInvulnerability+3;
+					text = player.powerupInvulnerability;
+				}
+				else if(powerupList[i].type == 2) {
+					player.powerupSize = player.powerupSize+1;
+					text = player.powerupSize;
+				}
+				else if(powerupList[i].type == 3) {
+					player.powerupSpeed = player.powerupSpeed+1;
+					text = player.powerupSpeed;
+				}
+				else if(powerupList[i].type == 4) {
+					player.powerupMagnetism = player.powerupMagnetism+1;
+					text = player.powerupMagnetism;
+				}
+				else if(powerupList[i].type == 5) {
+					player.powerupShock = player.powerupShock+3;
+					text = player.powerupShock;
+				}
+				createText(
+					id,
+					text,
+					12,
+					"#000000", //Black
+					1,
+					player.xLocation+textXLocation,
+					player.yLocation+textYLocation,
+					textXSpeed,
+					textYSpeed,
+					textXAcceleration,
+					textYAcceleration,
+					textTime
+				);
+				id++;
+				powerupsToDeleteList.push(i);
+				playAudio("powerupPickup.mp3");
+			}
+		}
+		else if(powerupList[i].active == false && powerupList[i].countdownInitiated == false) {
+			setTimeout(activatePowerup, powerupActivationTime, powerupList[i].id);
+			powerupList[i].countdownInitiated = true;
+		}
+	}
+	if(powerupsToDeleteList.length > 0) {
+		deleteObtainedPowerups(powerupsToDeleteList);
+	}
+}
+
+function deleteObtainedPowerups(powerupsToDeleteList) {
+	for(var i = 0; i < powerupsToDeleteList.length; i++) {
+		powerupList.splice(powerupsToDeleteList[i], 1);
+	}
+}
+
+function moveShocksAndCheckForCollision() {
+	var unitsRelationData;
+	for(var i = 0; i < shockList.length; i++) {
+		if(shockList[i].type == 1) { //Players shock.
+			for(var j = 0; j < enemyList.length; j++) {
+				unitsRelationData = getUnitsRelationData(
+					shockList[i].xLocation,
+					shockList[i].yLocation,
+					shockList[i].size,
+					enemyList[j].xLocation,
+					enemyList[j].yLocation,
+					enemyList[j].realSize
+				);
+				if(unitsRelationData.collision && enemyList[j].active && enemyList[j].powerupInvulnerabilityStatus == false) {
+					hitEnemy(shockDamage, j);
+				}
+			}
+		}
+		else if(shockList[i].type == 2) { //Enemys shock.
+			unitsRelationData = getUnitsRelationData(
+				shockList[i].xLocation,
+				shockList[i].yLocation,
+				shockList[i].size,
+				player.xLocation,
+				player.yLocation,
+				player.realSizeWithShield
+			);
+			if(unitsRelationData.collision && player.vulnerable
+				&& player.powerupInvulnerabilityStatus == false && enemyList[i].active) {
+				hitPlayer(shockDamage);
+			}
+		}
+	}
+}
+
+function moveTexts() {
+	for(var i = 0; i < textList.length; i++) {
+		textList[i].xLocation = textList[i].xLocation+(textList[i].xSpeed*(currentFrameIntervalLength/1000));
+		textList[i].yLocation = textList[i].yLocation+(textList[i].ySpeed*(currentFrameIntervalLength/1000));
+	}
+}
+
+function increaseDifficulty(amount) {
+	for(var i = 0; i < amount; i++) {
+		var toughness = getRandom(1, 3);
+		var xLocation = getRandom(1, 899);
+		var yLocation = getRandom(1, 899);
+		var xSpeed = getRandom(-200, 200)*(1/toughness);
+		var ySpeed = getRandom(-200, 200)*(1/toughness);
+		var xAcceleration = 0;
+		var yAcceleration = 0;
+		var health = getRandom(4, 7)*toughness;
+		var size = getRandom(3, 9)*toughness;
+		var powerupInvulnerability = 0;
+		var powerupSize = 0;
+		var powerupSpeed = 0;
+		var powerupMagnetism = 0;
+		var powerupShock = 0;
+		var powerupInvulnerabilityStatus = false;
+		var powerupSizeStatus = false;
+		var powerupSpeedStatus = false;
+		var powerupMagnetismStatus = false;
+		var powerupShockStatus = false;
+		var active = false;
+		var sizeMultiplier = 1;
+		var speedMultiplier = 1;
+		var realSize = size;
+		var realXSpeed = xSpeed;
+		var realYSpeed = ySpeed;
+		var alive = true;
+		addEnemy(id, xLocation, yLocation, xSpeed, ySpeed, xAcceleration, yAcceleration, 
+			health, size, powerupInvulnerability, powerupSize, powerupSpeed, powerupMagnetism, powerupShock,
+			powerupInvulnerabilityStatus, powerupSizeStatus, powerupSpeedStatus, powerupMagnetismStatus, powerupShockStatus,
+			active, sizeMultiplier, speedMultiplier, realSize, realXSpeed, realYSpeed, alive);
+		id++;
+	}
+}
+
+function sendPowerup(amount) {
+	for(var i = 0; i < amount; i++) {
+		var xLocation = getRandom(15, 885);
+		var yLocation = getRandom(15, 885);
+		var xSpeed = 0;
+		var ySpeed = 0;
+		var xAcceleration = 0;
+		var yAcceleration = 0;
+		var health = 10;
+		var size = 10;
+		var type = getRandom(1, 5);
+		var active = false;
+		var countdownInitiated = false;
+		addPowerup(id, xLocation, yLocation, xSpeed, ySpeed, xAcceleration, yAcceleration, health, size, type, active, countdownInitiated);
+		id++;
+	}
+}
+
+function addEnemy(idP, xLocationP, yLocationP, xSpeedP, ySpeedP, xAccelerationP, yAccelerationP, 
+	healthP, sizeP, powerupInvulnerabilityP, powerupSizeP, powerupSpeedP, powerupMagnetismP, powerupShockP,
+	powerupInvulnerabilityStatusP, powerupSizeStatusP, powerupSpeedStatusP, powerupMagnetismStatusP, powerupShockStatusP,
+	activeP, sizeMultiplierP, speedMultiplierP, realSizeP, realXSpeedP, realYSpeedP, aliveP) {
+	enemyList.push({
+		id: idP,
+		xLocation: xLocationP,
+		yLocation: yLocationP,
+		xSpeed: xSpeedP,
+		ySpeed: ySpeedP,
+		xAcceleration: xAccelerationP,
+		yAcceleration: yAccelerationP,
+		health: healthP,
+		size: sizeP,
+		powerupInvulnerability: powerupInvulnerabilityP,
+		powerupSize: powerupSizeP,
+		powerupSpeed: powerupSpeedP,
+		powerupMagnetism: powerupMagnetismP,
+		powerupShock: powerupShockP,
+		powerupInvulnerabilityStatus: powerupInvulnerabilityStatusP,
+		powerupSizeStatus: powerupSizeStatusP,
+		powerupSpeedStatus: powerupSpeedStatusP,
+		powerupMagnetismStatus: powerupMagnetismStatusP,
+		powerupShockStatus: powerupShockStatusP,
+		active: activeP,
+		sizeMultiplier: sizeMultiplierP,
+		speedMultiplier: speedMultiplierP,
+		realSize: realSizeP,
+		realXSpeed: realXSpeedP,
+		realYSpeed: realYSpeedP,
+		alive: aliveP
+	});
+}
+
+function addPowerup(idP, xLocationP, yLocationP, xSpeedP, ySpeedP, xAccelerationP, yAccelerationP, healthP, sizeP, typeP, activeP, countdownInitiatedP) {
+	powerupList.push({
+		id: idP,
+		xLocation: xLocationP,
+		yLocation: yLocationP,
+		xSpeed: xSpeedP,
+		ySpeed: ySpeedP,
+		xAcceleration: xAccelerationP,
+		yAcceleration: yAccelerationP,
+		health: healthP,
+		size: sizeP,
+		type: typeP,
+		active: activeP,
+		countdownInitiated: countdownInitiatedP
+	});
+}
+
+function createText(idP, textP, sizeP, colorP, opacityP, xLocationP, yLocationP, xSpeedP, ySpeedP, xAccelerationP, yAccelerationP, timeP) {
+	textList.push({
+		id: idP,
+		text: textP,
+		size: sizeP,
+		color: colorP,
+		opacity: opacityP,
+		xLocation: xLocationP,
+		yLocation: yLocationP,
+		xSpeed: xSpeedP,
+		ySpeed: ySpeedP,
+		xAcceleration: xAccelerationP,
+		yAcceleration: yAccelerationP,
+		timer: new Timer(
+			function() {
+				removeText(idP);
+			},
+			timeP
+		)
+	});
+	//setTimeout(removeText, timeP, idP);
+}
+
+function removeText(idP) {
+	for(var i = 0; i < textList.length; i++) {
+		if(textList[i].id == idP) {
+			textList.splice(i, 1);
+		}
+	}
+}
+
+function executeAI() {
+	for(var i = 0; i < enemyList.length; i++) {
+		if(enemyList[i].powerupMagnetism > 0 && enemyList[i].powerupMagnetismStatus == false) {
+			enemyList[i].powerupMagnetismStatus = true;
+			setTimeout(endMagnetismPowerup, powerupMagnetismTime, enemyList[i].id);
+			enemyList[i].powerupMagnetism--;
+			playAudio("magnetismEffect.mp3");
+		}
+		if(enemyList[i].powerupSize > 0 && enemyList[i].powerupSizeStatus == false) {
+			enemyList[i].powerupSizeStatus = true;
+			setTimeout(endSizePowerup, powerupSizeTime, enemyList[i].id);
+			enemyList[i].powerupSize--;
+			playAudio("sizeChange.mp3");
+		}
+		if(enemyList[i].powerupSpeed > 0 && enemyList[i].powerupSpeedStatus == false) {
+			enemyList[i].powerupSpeedStatus = true;
+			setTimeout(endSpeedPowerup, powerupSpeedTime, enemyList[i].id);
+			enemyList[i].powerupSpeed--;
+			playAudio("speedUp.mp3");
+		}
+		if(enemyList[i].powerupShock > 0 && enemyList[i].powerupShockStatus == false) {
+			enemyList[i].powerupShockStatus = true;
+			setTimeout(endShockPowerup, powerupShockTime, enemyList[i].id);
+			enemyList[i].powerupShock--;
+			playAudio("shockCharge.mp3");
+		}
+		if(enemyList[i].powerupInvulnerability > 0 && enemyList[i].powerupInvulnerabilityStatus == false && enemyIsInDanger(enemyList[i].id)) {
+			enemyList[i].powerupInvulnerabilityStatus = true;
+			setTimeout(endInvulnerabilityPowerup, powerupInvulnerabilityTime, enemyList[i].id);
+			enemyList[i].powerupInvulnerability--;
+			playAudio("invulnerabilityEffect.mp3");
+		}
+	}
+}
+
+function enemyIsInDanger(idP) {
+	listPosition = enemyList.map(function(e) { return e.id; }).indexOf(idP);
+	var unitsRelationData = getUnitsRelationData(
+		enemyList[listPosition].xLocation,
+		enemyList[listPosition].yLocation,
+		enemyList[listPosition].realSize,
+		player.xLocation,
+		player.yLocation,
+		player.realSize
+	);
+	var boolVal = false;
+	if(player.powerupShockStatus && unitsRelationData.distance < player.realSize*shockSizeMultiplier && getRandom(1, 100) > 97) {
+		boolVal = true;
+	}
+	if(player.powerupInvulnerabilityStatus && unitsRelationData.emptySpaceDistance < 50 && getRandom(1, 100) > 70) {
+		boolVal = true;
+	}
+	return boolVal;
+}
+
+function createPath() {
+	var playerColor;
+	playerColor = drawPlayer();
+	drawEnemies();
+	drawPowerups();
+	drawPlayerShield();
+	drawPlayerMagnetism(playerColor);
+	drawPlayerShock();
+	drawShocks();
+	drawTexts();
+}
+
+function drawPlayer() {
+	var color;
+	var opacity;
+	color = "#000000"; //Black.
+	opacity = 1;
+	if(player.powerupInvulnerabilityStatus && getRandom(1, 2) == 2) {
+		color = "#FFD700"; //Gold.
+	}
+	if(player.powerupShockStatus && getRandom(1, 2) == 2) {
+		color = "#00FFFF"; //Cyan.
+	}
+	if(player.vulnerable == false && getRandom(1, 2) == 2) {
+		opacity = 0;
+	}
+	drawBall(
+		Math.floor(player.xLocation),
+		Math.floor(player.yLocation),
+		player.realSize,
+		color,
+		opacity
+	);
+	return color;
+}
+
+function drawPlayerShield() {
+	if(player.shield > 0) {
+		var color;
+		color = "#0000FF"; //Blue.
+		if(player.vulnerable == false && getRandom(1, 2) == 2) {
+			opacity = 0;
+		}
+		drawBall(
+			Math.floor(player.xLocation),
+			Math.floor(player.yLocation),
+			player.realSizeWithShield,
+			color,
+			player.shieldOpacity
+		);
+	}
+
+}
+
+function drawPlayerMagnetism(color) {
+	var opacity;
+	if(player.powerupMagnetismStatus) {
+		opacity = magnetismOpacity;
+		drawBall(
+			Math.floor(player.xLocation),
+			Math.floor(player.yLocation),
+			(player.realSize+(player.shield*player.shieldRangeMultiplier))*magnetismSizeMultiplier,
+			color,
+			opacity
+		);
+	}
+}
+
+function drawPlayerShock() {
+	var color;
+	var opacity;
+	if(player.powerupShockStatus) {
+		color = "#00FFFF"; //Cyan.
+		opacity = 0.75;
+		drawCircle(
+			Math.floor(player.xLocation),
+			Math.floor(player.yLocation),
+			(player.realSize+(player.shield*player.shieldRangeMultiplier))*shockSizeMultiplier,
+			color,
+			opacity
+		);
+	}
+}
+
+function drawEnemies() {
+	var color;
+	var opacity;
+	for(var i = 0; i < enemyList.length; i++) {
+		if(enemyList[i].alive) {
+			color = "#FF0000"; //Red.
+			opacity = 1;
+			if(enemyList[i].active == false) {
+				color = "#8B0000"; //DarkRed.
+			}
+			if(enemyList[i].powerupInvulnerabilityStatus && getRandom(1, 2) == 2) {
+				color = "#FFD700"; //Gold.
+			}
+			if(enemyList[i].powerupShockStatus && getRandom(1, 2) == 2) {
+				color = "#00FFFF"; //Cyan.
+			}
+			drawBall(
+				Math.floor(enemyList[i].xLocation), 
+				Math.floor(enemyList[i].yLocation), 
+				enemyList[i].realSize,
+				color,
+				opacity
+			);
+			if(enemyList[i].powerupMagnetismStatus) {
+				opacity = magnetismOpacity;
+				drawBall(
+					Math.floor(enemyList[i].xLocation), 
+					Math.floor(enemyList[i].yLocation), 
+					enemyList[i].realSize*magnetismSizeMultiplier,
+					color,
+					opacity
+				);
+			}
+			if(enemyList[i].powerupShockStatus) {
+				color = "#00FFFF"; //Cyan.
+				opacity = 0.75;
+				drawCircle(
+					Math.floor(enemyList[i].xLocation), 
+					Math.floor(enemyList[i].yLocation), 
+					enemyList[i].realSize*shockSizeMultiplier,
+					color,
+					opacity
+				);
+			}
+		}
+	}
+}
+
+function drawPowerups() {
+	var color;
+	var opacity;
+	for(var i = 0; i < powerupList.length; i++) {
+		if(powerupList[i].type == 1) { //Invulnerability.
+			color = "#FFD700"; //Gold.
+		}
+		else if(powerupList[i].type == 2) { //Size.
+			color = "#FF00FF"; //Fuchsia (pink).
+		}
+		else if(powerupList[i].type == 3) { //Speed.
+			color = "#7CFC00"; //LawnGreen.
+		}
+		else if(powerupList[i].type == 4) { //Magnetism.
+			color = "#A9A9A9"; //DarkGray (gray).
+		}
+		else if(powerupList[i].type == 5) { //Shock.
+			color = "#00FFFF"; //Cyan.
+		}
+		else {
+			color = "#000000"; //Black.
+		}
+		if(powerupList[i].active == false) {
+			color = "#000000"; //Black.
+		}
+		drawBall(
+			powerupList[i].xLocation, 
+			powerupList[i].yLocation, 
+			powerupList[i].size,
+			color,
+			opacity
+		);
+	}
+}
+
+function drawShocks() {
+	for(var i = 0; i < shockList.length; i++) {
+		drawBall(
+			shockList[i].xLocation, 
+			shockList[i].yLocation, 
+			shockList[i].size,
+			shockList[i].color,
+			shockList[i].opacity
+		);
+	}
+}
+
+function drawBall(xLocation, yLocation, size, color, opacity) {
+	ctx.fillStyle = color;
+	ctx.globalAlpha = opacity;
+	ctx.beginPath();
+	ctx.arc(
+		xLocation, 
+		yLocation, 
+		size, 
+		0, 
+		Math.PI * 2
+	);
+	ctx.fill();
+	ctx.closePath();
+	ctx.globalAlpha = 1;
+}
+
+function drawCircle(xLocation, yLocation, size, color, opacity) {
+	ctx.strokeStyle = color;
+	ctx.globalAlpha = opacity;
+	ctx.beginPath();
+	ctx.arc(
+		xLocation, 
+		yLocation, 
+		size, 
+		0, 
+		Math.PI * 2
+	);
+	ctx.stroke();
+	ctx.closePath();
+	ctx.globalAlpha = 1;
+}
+
+function drawTexts() {
+	for(var i = 0; i < textList.length; i++) {
+		if(textList[i].timer.getInitialDelay() > 0) {
+			textList[i].opacity = (textList[i].timer.getRemaining())/(textList[i].timer.getInitialDelay());
+		}
+		ctx.globalAlpha = textList[i].opacity;
+		ctx.font = textList[i].size+"pt Calibri";
+		ctx.fillStyle = textList[i].color;
+		ctx.fillText(textList[i].text, textList[i].xLocation, textList[i].yLocation);
+		ctx.globalAlpha = 1;
+	}
+}
+
+//1 is normally the enemy, 2 the player.
+function getUnitsRelationData(xLocation1P, yLocation1P, size1P, xLocation2P, yLocation2P, size2P) {
+	var collisionF;
+	var xLocationDifferenceF = Math.floor(xLocation1P)-Math.floor(xLocation2P);
+	var yLocationDifferenceF = Math.floor(yLocation1P)-Math.floor(yLocation2P);
+	var xLocationDifferenceAbsF = Math.abs(Math.floor(xLocation1P) - Math.floor(xLocation2P));
+	var yLocationDifferenceAbsF = Math.abs(Math.floor(yLocation1P) - Math.floor(yLocation2P));
+	var distanceF = Math.sqrt(Math.pow(xLocationDifferenceAbsF, 2)+Math.pow(yLocationDifferenceAbsF, 2));
+	var emptySpaceDistanceF = distanceF-(size1P+size2P);
+	if(emptySpaceDistanceF < 0) {
+		collisionF = true;
+	}
+	else {
+		collisionF = false;
+	}
+	return {
+		xLocationDifference: xLocationDifferenceF,
+		yLocationDifference: yLocationDifferenceF,
+		distance: distanceF,
+		emptySpaceDistance: emptySpaceDistanceF,
+		collision: collisionF
+	}
+}
+
+function getBorderCollisionData(xLocationP, yLocationP, sizeP) {
+	var reverseXSpeedF = false;
+	var reverseYSpeedF = false;
+	var newXLocationF;
+	var newYLocationF;
+	if(xLocationP-sizeP < 0) { //left
+		reverseXSpeedF = true;
+		newXLocationF = 0+sizeP;
+	}
+	else if(xLocationP+sizeP > canvas.width) { //right
+		reverseXSpeedF = true;
+		newXLocationF = canvas.width-sizeP;
+	}
+	if(yLocationP-sizeP < 0) { //top
+		reverseYSpeedF = true;
+		newYLocationF = 0+sizeP;
+	}
+	else if(yLocationP+sizeP > canvas.height) { //bottom
+		reverseYSpeedF = true;
+		newYLocationF = canvas.height-sizeP;
+	}
+	return {
+		reverseXSpeed: reverseXSpeedF,
+		reverseYSpeed: reverseYSpeedF,
+		newXLocation: newXLocationF,
+		newYLocation: newYLocationF
+	}
+}
+
+function endSizePowerup(idP) {
+	if(idP != player.id) {
+		listPosition = enemyList.map(function(e) { return e.id; }).indexOf(idP);
+		enemyList[listPosition].powerupSizeStatus = false;
+	}
+	else {
+		player.powerupSizeStack--;
+		if(player.powerupSizeStack <= 0) {
+			player.powerupSizeStatus = false;
+		}
+	}
+}
+
+function endSpeedPowerup(idP) {
+	if(idP != player.id) {
+		listPosition = enemyList.map(function(e) { return e.id; }).indexOf(idP);
+		enemyList[listPosition].powerupSizeStatus = false;
+	}
+	else {
+		player.powerupSpeedStack--;
+		if(player.powerupSpeedStack <= 0) {
+			player.powerupSpeedStatus = false;
+		}
+	}
+}
+
+function endMagnetismPowerup(idP) {
+	if(idP != player.id) {
+		listPosition = enemyList.map(function(e) { return e.id; }).indexOf(idP);
+		enemyList[listPosition].powerupMagnetismStatus = false;
+	}
+	else {
+		player.powerupMagnetismStatus = false;
+	}
+}
+
+function endShockPowerup(idP) {
+	if(idP != player.id) {
+		listPosition = enemyList.map(function(e) { return e.id; }).indexOf(idP);
+		enemyList[listPosition].powerupShockStatus = false;
+	}
+	else {
+		player.powerupShockStatus = false;
+	}
+	createShock(idP);
+}
+
+function endInvulnerabilityPowerup(idP) {
+	if(idP != player.id) {
+		listPosition = enemyList.map(function(e) { return e.id; }).indexOf(idP);
+		enemyList[listPosition].powerupInvulnerabilityStatus = false;
+	}
+	else {
+		player.powerupInvulnerabilityStatus = false;
+	}
+}
+
+function checkForGameOver() {
+	if(player.health <= 0) {
+		gameOver();
+	}
+}
+
+function createShock(idP) {
+	var xLocationF;
+	var yLocationF;
+	var sizeF;
+	var typeF; //1 for player controlled, 2 for enemy controlled.
+	var colorF;
+	var opacityF;
+	if(idP != player.id) {
+		xLocationF = Math.floor(enemyList[listPosition].xLocation);
+		yLocationF = Math.floor(enemyList[listPosition].yLocation);
+		sizeF = enemyList[listPosition].realSize*shockSizeMultiplier;
+		typeF = 2;
+	}
+	else {
+		xLocationF = Math.floor(player.xLocation);
+		yLocationF = Math.floor(player.yLocation);
+		sizeF = (player.realSize+(player.shield*player.shieldRangeMultiplier))*shockSizeMultiplier;
+		typeF = 1;
+	}
+	colorF = "#00FFFF"; //Cyan.
+	opacityF = 0.7;
+	shockList.push({
+		xLocation: xLocationF,
+		yLocation: yLocationF,
+		size: sizeF,
+		type: typeF,
+		color: colorF,
+		opacity: opacityF
+	});
+	setTimeout(removeFirstShock, shockExplosionDuration);
+	playAudio("shockImpact.mp3");
+}
+
+function removeFirstShock() {
+	shockList.splice(0, 1);
+}
+
+function makePlayerVulnerable() {
+	player.vulnerable = true;
+}
+
+function activateEnemy(listPosition) {
+	enemyList[listPosition].active = true;
+}
+
+function activatePowerup(idP) {
+	for(var i = 0; i < powerupList.length; i++) {
+		if(powerupList[i].id == idP) {
+			powerupList[i].active = true;
+		}
+	}
+}
+
+function hitPlayer(amount) {
+	var mitigatedAmount = amount;
+	if(player.shield > 0) {
+		var shieldDamageValue;
+		var newShieldValue;
+		var percentMitigatedInDecimal;
+		var percentOfDamageHittingShield;
+		var percentOfDamageHittingPlayer;
+		shieldDamageValue = amount/shieldDamageDurabilityPerPoint;
+		newShieldValue = player.shield-shieldDamageValue;
+		if(newShieldValue < 0) {
+			newShieldValue = 0;
+		}
+		percentOfDamageHittingShield = player.shield/shieldDamageValue;
+		if(percentOfDamageHittingShield >= 1) {
+			percentOfDamageHittingShield = 1;
+			percentOfDamageHittingPlayer = 0;
+		}
+		else {
+			percentOfDamageHittingPlayer = 1-percentOfDamageHittingShield;
+		}
+		mitigatedAmount = (percentOfDamageHittingShield*amount*(1-shieldDamageMitigationAmount))+(percentOfDamageHittingPlayer*amount);
+		player.shield = newShieldValue;
+	}
+	player.health = player.health-mitigatedAmount;
+	player.vulnerable = false;
+	setTimeout(makePlayerVulnerable, hitInvulnerabilityTime);
+	playAudio("playerHit.mp3");
+}
+
+function hitEnemy(amount, listPosition) {
+	enemyList[listPosition].health = enemyList[listPosition].health-amount;
+	enemyList[listPosition].active = false;
+	if(enemyList[listPosition].health <= 0) {
+		enemyList[listPosition].alive = false;
+		//playAudio("playerHit.mp3"); //!!!
+	}
+	else {
+		//playAudio("playerHit.mp3");
+	}
+}
+
+function chargePlayerShield() {
+	player.shield++;
+}
+
+function gameOver() {
+	isGameOver = true;
+	stopFrames();
+	stopDifficultyIncrease();
+	stopPowerupSending();
+	ctx.font = '72pt Calibri';
+    ctx.fillStyle = 'black';
+    ctx.fillText("Game over", 215, 350);
+	ctx.font = '30pt Calibri';
+    ctx.fillText("You survived for "+roundTotalTime.minutes+" minutes and "+roundTotalTime.seconds+" seconds", 10, 890);
+}
+
+function resetGame() {
+	stopGameClock();
+	stopFrames();
+	stopDifficultyIncrease();
+	stopDifficultyOverTimeIncrease();
+	stopPowerupSending();
+	gameClockIntervalId = undefined;
+	gameFrameIntervalId = undefined;
+	gameDifficultyIncreaseIntervalId = undefined;
+	gameDifficultyOverTimeIncreaseIntervalId = undefined;
+	sendPowerupIntervalId = undefined;
+	player.xLocation = 450;
+	player.yLocation = 450;
+	player.xSpeed = 5;
+	player.ySpeed = 5;
+	player.xAcceleration = -450;
+	player.yAcceleration = -450;
+	player.health = 21;
+	player.size = 6;
+	player.vulnerable = true;
+	player.powerupInvulnerability = 3;
+	player.powerupSize = 2;
+	player.powerupSpeed = 2;
+	player.powerupMagnetism = 2;
+	player.powerupShock = 5;
+	player.powerupInvulnerabilityStatus = false;
+	player.powerupSizeStatus = false;
+	player.powerupSpeedStatus = false;
+	player.powerupMagnetismStatus = false;
+	player.powerupShockStatus = false;
+	player.powerupInvulnerabilityTimeout = "undefined";
+	player.powerupSpeedTimeout = "undefined";
+	player.powerupMagnetismTimeout = "undefined";
+	player.powerupShockTimeout = "undefined";
+	player.powerupSizeTimeoutout = "undefined";
+	player.sizeMultiplier = 1;
+	player.enemySizeMultiplier = 1;
+	player.enemySpeedMultiplier = 1;
+	player.realSize = 6;
+	player.powerupSizeStack = 0;
+	player.powerupSpeedStack = 0;
+	enemyList = [];
+	powerupList = [];
+	shockList = [];
+	textList = [];
+	gameStatus = false;
+	dateObject = new Date();
+	gameClock = 0;
+	lastFrameGameClock = 0;
+	currentFrameIntervalLength = 0;
+	mousePos.x = 450;
+	mousePos.y = 450;
+	initialEnemies = 15;
+	enemyIncreaseAmount = 1;
+	enemyOverTimeIncreaseTime = 80000;
+	enemyOverTimeIncreaseAmount = 1;
+	powerupInvulnerabilityTime = 2000;
+	powerupSizeTime = 20000;
+	powerupSpeedTime = 20000;
+	powerupMagnetismTime = 10000;
+	powerupShockTime = 2500;
+	shockSizeMultiplier = 20;
+	shockExplosionDuration = 500;
+	shockDamage = 12;
+	magnetismSizeMultiplier = 30;
+	magnetismForce = 100;
+	magnetismOpacity = 0.3;
+	hitInvulnerabilityTime = 4000;
+	enemyActivationTime = 3000;
+	enemyImpactDamage = 10;
+	playerImpactDamage = 10;
+	if(typeof(powerupInvulnerabilityTimeout !== "undefined")){
+		stopPowerupSizeTimeout();
+	}
+	if(typeof(powerupSpeedTimeout !== "undefined")){
+		stopPowerupSpeedTimeout();
+	}
+	if(typeof(powerupMagnetismTimeout !== "undefined")){
+		stopPowerupMagnetismTimeout();
+	}
+	if(typeof(powerupShockTimeout !== "undefined")){
+		stopPowerupShockTimeout();
+	}
+	if(typeof(powerupSizeTimeoutout !== "undefined")){
+		stopPowerupInvulnerabilityTimeout();
+	}
+	powerupInvulnerabilityTimeout = undefined;
+	powerupSpeedTimeout = undefined;
+	powerupMagnetismTimeout = undefined;
+	powerupShockTimeout = undefined;
+	powerupSizeTimeoutout = undefined;
+	isGameOver = false;
+	accelerationMultiplier = 15;
+	frameInterval = 10;
+	enemyInterval = 10000;
+	powerupInterval = 15000;
+	powerupIncreaseAmount = 1;
+	roundStartTimeMs = 0;
+	roundTotalTime.minutes = 0;
+	roundTotalTime.minutes = 0;
+	powerupActivationTime = 3000;
+	speedMultiplier = 1;
+	shieldChargeStatus = false;
+	shieldChargeIntervalId = "undefined";
+	shieldChargeIntervalTime = 3000;
+	shieldRangeMultiplier = 0.5;
+}
+
+function convertToMinutesAndSeconds(milliseconds) {
+	var asSeconds = milliseconds/1000;
+	var asMinutes = asSeconds/60;
+	var reminderSeconds = asMinutes % 1;
+	reminderSeconds = reminderSeconds*60;
+	var minutesF = Math.floor(asMinutes);
+	var secondsF = Math.floor(reminderSeconds);
+	return {
+		minutes: minutesF,
+		seconds: secondsF
+	}
+}
+
+function updatePowerupInformation() {
+	document.getElementById("powerupInformation").innerHTML = "Size(A):"+player.powerupSize+" Speed(S):"+player.powerupSpeed+" Magnetism(D):"+player.powerupMagnetism+" Shock(Z):"+player.powerupShock+" Invulnerability(X):"+player.powerupInvulnerability+" Health:"+player.health+" Shield:"+player.shield;
+}
+//END OF DODGE GAME SECTION
+//---------------------------------------------------------------------------------------------------------
+</script>
+
+</body>
+</html> 
