@@ -22,3 +22,14 @@ Shield:
 Additional stuff:
 - Pressing Space instantly sets your speed to 0. Can be used to more easily navigate the field, but is considered cheating in a way.
 - Pressing T pauses the game, but was never fully implemented, so things like real-time countdowns still continue and can cause problems.
+
+Sound effects were removed from the game due to copyright, but the game still accepts mp3 files with the following names in the same folder:
+- "invulnerabilityEffect.mp3"
+- "magnetismEffect.mp3"
+- "playerHit.mp3"
+- "powerupPickup.mp3"
+- "shockCharge.mp3"
+- "shockImpact.mp3"
+- "sizeChange.mp3"
+- "slowDown.mp3"
+- "speedUp.mp3"
