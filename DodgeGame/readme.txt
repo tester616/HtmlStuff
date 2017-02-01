@@ -7,7 +7,7 @@ Mechanics:
 - You can collect spawning powerups and use them against your enemies to survive longer.
 - Enemies can also use powerups against you if they come in contact with them, so collecting them fast is an important factor for long survival.
 
-powerups:
+Powerups:
 - (A) Size		--> You and enemies shrink in size, collecting enemies get bigger.
 - (S) Speed		--> Enemies slow down, collecting enemies speed up.
 - (D) Magnetism		--> You repel incoming enemies in an aura around you based on distance, collecting enemies draw you in.
@@ -17,7 +17,7 @@ powerups:
 Shield:
 - Has two modes, growing and not growing
 - Toggle between the modes with Ctrl
-- growing mode gives you more shields over time but slows you down
+- Growing mode gives you more shields over time but slows you down
 
 Additional stuff:
 - Pressing Space instantly sets your speed to 0. Can be used to more easily navigate the field, but is considered cheating in a way.
